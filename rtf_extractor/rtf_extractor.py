@@ -7,7 +7,7 @@ from striprtf.striprtf import rtf_to_text
 class RTFExtractor:
     def __init__(self, file_path):
         self.file_path = file_path
-
+        self.clean_characters = ["\fs20", "\ql"]
         # Read the file contents into memory
         with open(file_path, mode="r", errors="ignore", encoding="utf-8") as f:
             self.file_contents = f.read()
@@ -25,7 +25,10 @@ class RTFExtractor:
         result = ''
 
         for i in range(len(self.file_contents) // batch_len):
-            result += rtf_to_text(self.file_contents[i * batch_len: (i + 1) * batch_len])
+            try:
+                result += rtf_to_text(self.file_contents[i * batch_len: (i + 1) * batch_len], errors="ignore")
+            except Exception as e:
+                print(f"{i}. error {e} while converting \n {self.file_contents[i * batch_len: (i + 1) * batch_len]}")
 
         return result
 
@@ -143,10 +146,14 @@ class RTFExtractor:
         table_lines = table.split("\n")
         source = firm = pub_dat = ''
         for line in table_lines:
-            if "publication title" in line.lower():
-                source = line.split(";")[0].split("|")[-1].split(",")[0].strip()
-            elif "company / organization" in line.lower():
-                firm = line.split("Name: ")[-1].split(";")[0].strip()
+            # if "publication title" in line.lower():
+            #     source = line.split(";")[0].split("|")[-1].split(",")[0].strip()
+
+            #     for c in self.clean_characters:
+            #         source = source.replace(c, "")
+                # print(f"line: {line}\n source: {source}\n")
+            if "company / organization" in line.lower():
+                firm = line.split("Name: ")[-1].split(";")[0].strip().replace("Company / organization:", "").replace("|", "").strip()
             elif "publication date" in line.lower():
                 matches = re.findall(r"[A-Z][a-z]{2}\s\d{1,2},\s\d{4}", line)
                 if matches:
@@ -201,7 +208,7 @@ class RTFExtractor:
             firm = "error_firm"
             result = False
 
-        return f"{source}_{firm}_{pub_dat}", result
+        return f"{firm}_{pub_dat}", result
 
     def transform(self, output_folder):
         """
