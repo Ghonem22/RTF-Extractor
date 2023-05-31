@@ -203,7 +203,7 @@ class RTFExtractor:
 
         return f"{source}_{firm}_{pub_dat}", result
 
-    def organize_files(self, output_folder):
+    def transform(self, output_folder):
         """
         Organizes the articles into separate files and saves them to disk.
 
@@ -217,6 +217,8 @@ class RTFExtractor:
 
         # Keep track of how many articles were saved for each publication date
         dates = {}
+        idx = 1
+        error_idx = 1
 
         # Loop through each article and save it to disk
         for i, (header, content, table) in enumerate(zip(headers, contents, tables)):
@@ -234,7 +236,8 @@ class RTFExtractor:
                 dates[file_name] += 1
                 file_name = f"{file_name}_{dates[file_name]}"
             else:
-                file_name = f"error_{i}"
+                file_name = f"error_{error_idx}"
+                error_idx += 1
 
             # Save the file to disk
             file_path = os.path.join(output_folder, file_name + ".txt")

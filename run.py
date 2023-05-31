@@ -1,7 +1,5 @@
-file_name = "files/3M Co.rtf"
+from rtf_extractor.rtf_extractor import *
 
-with open(file_name, mode="r", errors = 'ignore', encoding = "utf-8") as f:
-    file_contents = f.read()
 
-# rtf = file_contents
-# text = rtf_to_text(rtf)
+extractor = RTFExtractor("files/3M Co.rtf")
+extractor.transform(output_folder = "files/3M Co")
