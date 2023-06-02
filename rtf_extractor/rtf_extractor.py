@@ -2,11 +2,13 @@ import os
 import re
 from datetime import datetime
 from striprtf.striprtf import rtf_to_text
+from utilities.utilities import *
 
 
 class RTFExtractor:
     def __init__(self, file_path):
         self.file_path = file_path
+        self.firm_name_from_file = file_path.replace(".rtf", "").split("/")[-1]
         self.clean_characters = ["\fs20", "\ql"]
         # Read the file contents into memory
         with open(file_path, mode="r", errors="ignore", encoding="utf-8") as f:
@@ -28,7 +30,9 @@ class RTFExtractor:
             try:
                 result += rtf_to_text(self.file_contents[i * batch_len: (i + 1) * batch_len], errors="ignore")
             except Exception as e:
-                print(f"{i}. error {e} while converting \n {self.file_contents[i * batch_len: (i + 1) * batch_len]}")
+                # in some rare cases, rtf_to_text won't be able to decode data (if the data is econding of image)
+                print(f"{i}. error {e}")
+                # print(f"{i}. error {e} while converting \n {self.file_contents[i * batch_len: (i + 1) * batch_len]}")
 
         return result
 
@@ -67,7 +71,7 @@ class RTFExtractor:
                 contents.append(main_content)
                 tables.append(table)
 
-        return contents, tables, headers
+        return contents, tables, headers, full_contents
 
     def separate_content_and_table(self, content):
         """
@@ -151,18 +155,22 @@ class RTFExtractor:
 
             #     for c in self.clean_characters:
             #         source = source.replace(c, "")
-                # print(f"line: {line}\n source: {source}\n")
+            # print(f"line: {line}\n source: {source}\n")
             if "company / organization" in line.lower():
-                firm = line.split("Name: ")[-1].split(";")[0].strip().replace("Company / organization:", "").replace("|", "").strip()
+                if self.firm_name_from_file.lower().split(" ")[0] in line.lower():
+                    firm = self.firm_name_from_file
+                else:
+                    firm = line.split("Name: ")[-1].split(";")[0].strip().replace("Company / organization:",
+                                                                                  "").replace("|", "").strip()
             elif "publication date" in line.lower():
                 matches = re.findall(r"[A-Z][a-z]{2}\s\d{1,2},\s\d{4}", line)
                 if matches:
                     pub_dat = matches[0]
 
-            if source and firm and pub_dat:
-                return source, firm, pub_dat
+            if firm and pub_dat:
+                return firm, pub_dat
 
-        return source, firm, pub_dat
+        return firm, pub_dat
 
     def convert_date_format(self, date_string, input_format='%b %d, %Y', output_format='%Y_%m_%d'):
         """
@@ -175,22 +183,23 @@ class RTFExtractor:
         date = datetime.strptime(date_string, input_format)
         return date.strftime(output_format)
 
-    def get_file_name(self, content, table):
+    def get_file_name(self, full_content, table):
         """
         Generates the file name based on the metadata.
 
         Args:
-            content (str): The content of the article.
+            full_content (str): The full_content of the article. as if we couldn't use table data,
+            we will search on all the content before seperate table
             table (str): The table containing the metadata.
 
         Returns:
             str: The file name.
         """
         result = True
-        source, firm, pub_dat = self.extract_meta_data(table)
-        if not (source and firm and pub_dat):
-            content_source, content_firm, content_pub_dat = self.extract_meta_data(content)
-            source, firm, pub_dat = source or content_source, firm or content_firm, pub_dat or content_pub_dat
+        firm, pub_dat = self.extract_meta_data(table)
+        if not (firm and pub_dat):
+            content_firm, content_pub_dat = self.extract_meta_data(full_content)
+            firm, pub_dat = firm or content_firm, pub_dat or content_pub_dat
 
         if pub_dat:
             try:
@@ -201,50 +210,57 @@ class RTFExtractor:
         if not result:
             pub_dat = "error_date"
 
-        if not source:
-            source = "error_source"
-            result = False
         if not firm:
             firm = "error_firm"
             result = False
 
-        return f"{firm}_{pub_dat}", result
+        return pub_dat, firm, result
 
-    def transform(self, output_folder):
+    def transform(self, output_folder1, output_folder2):
         """
         Organizes the articles into separate files and saves them to disk.
 
         Args:
-            output_folder (str): The folder to save the files to.
+            output_folder1 (str): The folder to save the files with same companies name from article and file name.
+            output_folder2 (str): The folder to save the files with diffrent companies name from article and file name.
         """
-        if not os.path.exists(output_folder):
-            os.makedirs(output_folder)
+        if not os.path.exists(output_folder1):
+            os.makedirs(output_folder1)
 
-        contents, tables, headers = self.separate_articles()
+        if not os.path.exists(output_folder2):
+            os.makedirs(output_folder2)
+
+        contents, tables, headers, full_contents = self.separate_articles()
 
         # Keep track of how many articles were saved for each publication date
         dates = {}
         idx = 1
         error_idx = 1
-
         # Loop through each article and save it to disk
-        for i, (header, content, table) in enumerate(zip(headers, contents, tables)):
+        for i, (header, content, table, full_content) in enumerate(zip(headers, contents, tables, full_contents)):
             # Merge the file
             article = header + "\nLINKS\nFULL TEXT\n" + content
 
             # Get the file name
-            file_name, result = self.get_file_name(content, table)
+            pub_dat, firm, result = self.get_file_name(full_content, table)
 
             # Add a number to the end of the file name if there are multiple articles with the same name
-            if result:
-                if not dates.get(file_name):
-                    dates[file_name] = 0
+            # if result:
 
-                dates[file_name] += 1
-                file_name = f"{file_name}_{dates[file_name]}"
+            file_name = f"{self.firm_name_from_file}_{pub_dat}"
+            if not dates.get(file_name):
+                dates[file_name] = 0
+
+            dates[file_name] += 1
+            file_name = f"{file_name}_{dates[file_name]}"
+
+            p = get_similarity(self.firm_name_from_file, firm)
+            # if the firm name from the rtf file name == firm name extracted from the
+            # article, save it in Folder A, else, save it in folder B
+            if p > .95 or firm == "error_firm":
+                output_folder = output_folder1
             else:
-                file_name = f"error_{error_idx}"
-                error_idx += 1
+                output_folder = output_folder2
 
             # Save the file to disk
             file_path = os.path.join(output_folder, file_name + ".txt")
