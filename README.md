@@ -25,6 +25,9 @@ To use RTF-Extractor, users can clone the repository and install the required de
 
 **run the pipeline on one file:**
 
+            from rtf_extractor.rtf_extractor import *
+            import os
+            
             file_path = "files/articles.rtf"
             folder_path = "/".join(file_path.split("/")[:-1])
             extractor = RTFExtractor(file_path)
@@ -33,6 +36,10 @@ To use RTF-Extractor, users can clone the repository and install the required de
 
 **run the pipeline on all the files inside a folder:**
 
+            from rtf_extractor.rtf_extractor import *
+            import glob
+            import os
+            from tqdm import tqdm
 
             folder_path = "files"
             rtf_files = glob.glob(os.path.join(folder_path, "*.rtf"))
