@@ -17,26 +17,28 @@ The following are some of the key features of RTF-Extractor:
 * Save articles: Save seperated articles with name format using the extracted features.
 
 ## Requirements
-      pip install -r requirements.txt
+            pip install -r requirements.txt
       
 ---
 ## Usage
 To use RTF-Extractor, users can clone the repository and install the required dependencies. Then, they can import the relevant functions from the package and customize them as needed. Here's an example workflow:
 
-**run the code on one file**
+**run the pipeline on one file:**
 
-      file_path = "files/articles.rtf"
-      folder_path = "/".join(file_path.split("/")[:-1])
-      extractor = RTFExtractor(file_path)
-      extractor.transform(output_folder1 = os.path.join(folder_path, "Folder A"), output_folder2 =  os.path.join(folder_path, "Folder B"))
+            file_path = "files/articles.rtf"
+            folder_path = "/".join(file_path.split("/")[:-1])
+            extractor = RTFExtractor(file_path)
+            extractor.transform(output_folder1 = os.path.join(folder_path, "Folder A"), output_folder2 =  os.path.join(folder_path, "Folder B"))
 
 
-**run all the files inside a folder**
-      folder_path = "files"
-      rtf_files = glob.glob(os.path.join(folder_path, "*.rtf"))
+**run the pipeline on all the files inside a folder:**
 
-      print(f"We have {len(rtf_files)} rtf files")
-      for rtf_file in tqdm(rtf_files):
-          print("\n", rtf_file)
-          extractor = RTFExtractor(rtf_file)
-          extractor.transform(output_folder1 = os.path.join(folder_path, "Folder A"), output_folder2 =  os.path.join(folder_path, "Folder B"))
+
+            folder_path = "files"
+            rtf_files = glob.glob(os.path.join(folder_path, "*.rtf"))
+
+            print(f"We have {len(rtf_files)} rtf files")
+            for rtf_file in tqdm(rtf_files):
+                print("\n", rtf_file)
+                extractor = RTFExtractor(rtf_file)
+                extractor.transform(output_folder1 = os.path.join(folder_path, "Folder A"), output_folder2 =  os.path.join(folder_path, "Folder B"))
